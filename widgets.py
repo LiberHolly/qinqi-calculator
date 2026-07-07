@@ -156,12 +156,13 @@ class GlassCombobox:
         except tk.TclError:
             pass
 
+        # Fixed viewport-sized panel keeps rounded corners while only items scroll.
         panel = flatten_glass_tile(
             self._background,
             self.x,
             self.y + self._height,
             self._width,
-            content_h if scrollable else viewport_h,
+            viewport_h,
             radius=self._radius,
             blur=16,
             frost=0.12,
@@ -169,12 +170,16 @@ class GlassCombobox:
             shadow=False,
         )
         panel_photo = to_photo(panel, shell)
-        shell.create_image(0, 0, image=panel_photo, anchor="nw", tags=("popup_bg",))
+        bg_id = shell.create_image(0, 0, image=panel_photo, anchor="nw", tags=("popup_bg",))
         shell._panel_photo = panel_photo
 
         shell.configure(scrollregion=(0, 0, self._width, content_h))
         if scrollable:
             shell.configure(yscrollincrement=row_h)
+
+        def pin_bg() -> None:
+            shell.coords(bg_id, 0, shell.canvasy(0))
+            shell.tag_lower("popup_bg")
 
         def on_pick(_e=None, val: str = "") -> None:
             self._var.set(val)
@@ -213,6 +218,7 @@ class GlassCombobox:
             if delta == 0:
                 delta = -1 if event.num == 4 else 1 if event.num == 5 else 0
             shell.yview_scroll(delta, "units")
+            pin_bg()
             return "break"
 
         if scrollable:
@@ -227,6 +233,7 @@ class GlassCombobox:
 
         popup.bind("<Escape>", lambda _e: (popup.destroy(), setattr(self, "_popup", None)))
         shell.focus_set()
+        pin_bg()
 
 
 class GlassDisplay:
