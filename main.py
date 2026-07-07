@@ -1,25 +1,112 @@
-"""亲戚称呼模拟器 — Windows desktop app."""
+"""亲戚称呼模拟器 — Liquid Glass desktop app."""
+
+from __future__ import annotations
 
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox
+from dataclasses import dataclass
+from pathlib import Path
+from tkinter import messagebox
 
+from glass import (
+    apply_acrylic,
+    load_background,
+    make_glass_panel,
+    set_rounded_corners,
+    to_photo,
+)
 from kinship import RELATIVES, calculate
-
-# ── Color palette (light blue tones) ──
-BG = "#EAF2FA"           # soft sky background
-CARD = "#F7FAFE"         # card surface
-BORDER = "#C5D9ED"       # soft blue border
-TITLE = "#1A5FA8"        # deep blue title
-TEXT = "#2C3E50"         # dark slate text
-TEXT_MUTED = "#5B7A99"   # connector words
-RESULT_BG = "#E8F2FC"    # result highlight
-RESULT_FG = "#1565C0"    # result blue
-BTN = "#2B7FD4"          # button primary
-BTN_HOVER = "#1A6BB8"    # button pressed
-BTN_TEXT = "#FFFFFF"
+from widgets import GlassButton, GlassCombobox, GlassDisplay
 
 FONT = "Microsoft YaHei UI"
+ASSETS = Path(__file__).parent / "assets"
+BG_PATH = ASSETS / "bg.png"
+
+# Text — dark on light glass for readability
+TEXT_PRIMARY = "#1A2B3D"
+TEXT_SECONDARY = "#3A5068"
+TEXT_LABEL = "#344A60"
+TEXT_INPUT = "#1A3348"
+TEXT_ARROW = "#5A7490"
+TEXT_RESULT = "#0B5394"
+
+# Layout spacing — equal margin around the card on all sides
+WIN_MARGIN = 36
+CARD_PAD_X = 48
+CARD_PAD_TOP = 44
+CARD_PAD_BOTTOM = 36
+GAP_LABEL = 42
+BTN_GAP = 28
+
+# Vertical offsets inside the card
+INPUT_W, INPUT_H, INPUT_R = 196, 64, 22
+RESULT_W = 220
+BTN_W, BTN_H, BTN_R = 240, 64, 26
+INPUT_FONT = (FONT, 18)
+RESULT_FONT = (FONT, 19, "bold")
+BTN_FONT = (FONT, 19, "bold")
+
+TITLE_OFF = 44
+SUBTITLE_OFF = 82
+ROW_OFF = 118
+BTN_OFF = ROW_OFF + INPUT_H + BTN_GAP
+
+
+@dataclass(frozen=True)
+class Layout:
+    win_w: int
+    win_h: int
+    card_x: int
+    card_y: int
+    card_w: int
+    card_h: int
+    title_y: int
+    subtitle_y: int
+    row_y: int
+    x_a: int
+    x_b: int
+    x_r: int
+    label_de_x: int
+    label_jiao_x: int
+    btn_x: int
+    btn_y: int
+
+
+def compute_layout() -> Layout:
+    """Derive window and widget geometry from content sizes."""
+    row_width = INPUT_W + GAP_LABEL + INPUT_W + GAP_LABEL + RESULT_W
+    content_width = max(row_width, BTN_W)
+    card_w = content_width + CARD_PAD_X * 2
+    card_h = BTN_OFF + BTN_H + CARD_PAD_BOTTOM
+
+    win_w = card_w + WIN_MARGIN * 2
+    win_h = card_h + WIN_MARGIN * 2
+
+    card_x = WIN_MARGIN
+    card_y = WIN_MARGIN
+    row_x = card_x + CARD_PAD_X + (content_width - row_width) // 2
+    x_a = row_x
+    x_b = x_a + INPUT_W + GAP_LABEL
+    x_r = x_b + INPUT_W + GAP_LABEL
+
+    return Layout(
+        win_w=win_w,
+        win_h=win_h,
+        card_x=card_x,
+        card_y=card_y,
+        card_w=card_w,
+        card_h=card_h,
+        title_y=card_y + TITLE_OFF,
+        subtitle_y=card_y + SUBTITLE_OFF,
+        row_y=card_y + ROW_OFF,
+        x_a=x_a,
+        x_b=x_b,
+        x_r=x_r,
+        label_de_x=x_a + INPUT_W + GAP_LABEL // 2,
+        label_jiao_x=x_b + INPUT_W + GAP_LABEL // 2,
+        btn_x=card_x + (card_w - BTN_W) // 2,
+        btn_y=card_y + BTN_OFF,
+    )
 
 
 def speak(text: str) -> None:
@@ -58,127 +145,159 @@ class KinshipApp(tk.Tk):
         super().__init__()
         self.title("亲戚称呼模拟器")
         self.resizable(False, False)
-        self.configure(bg=BG)
-        self._setup_styles()
-        self._build_ui()
+        self.configure(bg="#000000")
 
-    def _setup_styles(self) -> None:
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure(
-            "Kinship.TCombobox",
-            font=(FONT, 16),
-            padding=(10, 8),
-            fieldbackground="#FFFFFF",
-            background="#FFFFFF",
-            foreground=TEXT,
-            arrowsize=18,
-        )
-        style.map(
-            "Kinship.TCombobox",
-            fieldbackground=[("readonly", "#FFFFFF")],
-            selectbackground=[("readonly", "#D6E8F7")],
-            selectforeground=[("readonly", TEXT)],
-        )
+        self._layout = compute_layout()
+        self._photos: list = []
+        self._bg = load_background(BG_PATH, self._layout.win_w, self._layout.win_h)
+
+        self.geometry(f"{self._layout.win_w}x{self._layout.win_h}")
+        self._build_ui()
+        self.update_idletasks()
+        self._apply_window_effects()
+
+    def _apply_window_effects(self) -> None:
+        hwnd = self.winfo_id()
+        apply_acrylic(hwnd, tint_abgr=0xCCF5FAFF)
+        set_rounded_corners(hwnd)
+        try:
+            self.attributes("-alpha", 0.98)
+        except tk.TclError:
+            pass
+
+    def _keep_photo(self, photo) -> None:
+        self._photos.append(photo)
+
+    def _glass_text(self, canvas: tk.Canvas, x: int, y: int, text: str, **kwargs) -> None:
+        font_spec = kwargs.pop("font", (FONT, 16))
+        fill = kwargs.pop("fill", TEXT_PRIMARY)
+        anchor = kwargs.get("anchor", "center")
+        canvas.create_text(x, y + 1, text=text, font=font_spec, fill="#FFFFFF", anchor=anchor)
+        canvas.create_text(x, y, text=text, font=font_spec, fill=fill, anchor=anchor)
 
     def _build_ui(self) -> None:
-        outer = tk.Frame(self, bg=BG)
-        outer.pack(fill=tk.BOTH, expand=True, padx=28, pady=28)
-
-        card = tk.Frame(
-            outer,
-            bg=CARD,
-            highlightbackground=BORDER,
-            highlightthickness=1,
-            padx=32,
-            pady=28,
+        lay = self._layout
+        self.canvas = tk.Canvas(
+            self, width=lay.win_w, height=lay.win_h, highlightthickness=0, bd=0
         )
-        card.pack()
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        # decorative top accent bar
-        accent = tk.Frame(card, bg=TITLE, height=4)
-        accent.pack(fill=tk.X, pady=(0, 20))
+        bg_photo = to_photo(self._bg, self)
+        self._keep_photo(bg_photo)
+        self.canvas.create_image(0, 0, image=bg_photo, anchor="nw")
 
-        title = tk.Label(
-            card,
-            text="亲戚称呼模拟器",
-            font=(FONT, 28, "bold"),
-            fg=TITLE,
-            bg=CARD,
+        card = make_glass_panel(
+            self._bg,
+            lay.card_x,
+            lay.card_y,
+            lay.card_w,
+            lay.card_h,
+            radius=34,
+            blur=24,
+            frost=0.10,
+            highlight_strength=0.78,
         )
-        title.pack(pady=(0, 24))
+        card_photo = to_photo(card, self)
+        self._keep_photo(card_photo)
+        self.canvas.create_image(lay.card_x, lay.card_y, image=card_photo, anchor="nw")
 
-        row = tk.Frame(card, bg=CARD)
-        row.pack(pady=8)
+        self._scene = self._bg.copy()
+        self._scene.paste(card, (lay.card_x, lay.card_y), card)
 
-        self.combo_a = ttk.Combobox(
-            row,
-            values=RELATIVES,
-            state="readonly",
-            width=10,
-            style="Kinship.TCombobox",
+        self._glass_text(
+            self.canvas,
+            lay.win_w // 2,
+            lay.title_y,
+            "亲戚称呼模拟器",
+            font=(FONT, 30, "bold"),
+            fill=TEXT_PRIMARY,
         )
-        self.combo_a.pack(side=tk.LEFT)
+        self._glass_text(
+            self.canvas,
+            lay.win_w // 2,
+            lay.subtitle_y,
+            "选择两位亲戚，一键推算称呼",
+            font=(FONT, 14),
+            fill=TEXT_SECONDARY,
+        )
+
+        self._glass_text(
+            self.canvas,
+            lay.label_de_x,
+            lay.row_y + INPUT_H // 2,
+            "的",
+            font=(FONT, 18),
+            fill=TEXT_LABEL,
+        )
+        self._glass_text(
+            self.canvas,
+            lay.label_jiao_x,
+            lay.row_y + INPUT_H // 2,
+            "叫",
+            font=(FONT, 18),
+            fill=TEXT_LABEL,
+        )
+
+        self.combo_a = GlassCombobox(
+            self.canvas,
+            lay.x_a,
+            lay.row_y,
+            RELATIVES,
+            self._scene,
+            self._photos,
+            width=INPUT_W,
+            height=INPUT_H,
+            radius=INPUT_R,
+            font=INPUT_FONT,
+            text_color=TEXT_INPUT,
+            arrow_color=TEXT_ARROW,
+        )
         self.combo_a.current(0)
 
-        tk.Label(
-            row, text="  的  ", font=(FONT, 16), fg=TEXT_MUTED, bg=CARD
-        ).pack(side=tk.LEFT)
-
-        self.combo_b = ttk.Combobox(
-            row,
-            values=RELATIVES,
-            state="readonly",
-            width=10,
-            style="Kinship.TCombobox",
+        self.combo_b = GlassCombobox(
+            self.canvas,
+            lay.x_b,
+            lay.row_y,
+            RELATIVES,
+            self._scene,
+            self._photos,
+            width=INPUT_W,
+            height=INPUT_H,
+            radius=INPUT_R,
+            font=INPUT_FONT,
+            text_color=TEXT_INPUT,
+            arrow_color=TEXT_ARROW,
         )
-        self.combo_b.pack(side=tk.LEFT)
         self.combo_b.current(1)
 
-        tk.Label(
-            row, text="  叫  ", font=(FONT, 16), fg=TEXT_MUTED, bg=CARD
-        ).pack(side=tk.LEFT)
-
-        result_box = tk.Frame(
-            row,
-            bg=RESULT_BG,
-            highlightbackground=BORDER,
-            highlightthickness=1,
-            padx=12,
-            pady=6,
-        )
-        result_box.pack(side=tk.LEFT)
-
         self.result_var = tk.StringVar(value="——")
-        self.result_label = tk.Label(
-            result_box,
-            textvariable=self.result_var,
-            font=(FONT, 18, "bold"),
-            fg=RESULT_FG,
-            bg=RESULT_BG,
-            width=10,
-            anchor="w",
+        self.result_display = GlassDisplay(
+            self.canvas,
+            lay.x_r,
+            lay.row_y,
+            self.result_var,
+            self._scene,
+            self._photos,
+            width=RESULT_W,
+            height=INPUT_H,
+            radius=INPUT_R,
+            font=RESULT_FONT,
+            text_color=TEXT_RESULT,
         )
-        self.result_label.pack()
 
-        btn = tk.Button(
-            card,
-            text="计算称呼",
-            font=(FONT, 17, "bold"),
-            width=12,
-            command=self._on_calculate,
-            bg=BTN,
-            fg=BTN_TEXT,
-            activebackground=BTN_HOVER,
-            activeforeground=BTN_TEXT,
-            relief=tk.FLAT,
-            cursor="hand2",
-            padx=16,
-            pady=10,
-            bd=0,
-            highlightthickness=0,
+        self.calc_btn = GlassButton(
+            self.canvas,
+            lay.btn_x,
+            lay.btn_y,
+            "计算称呼",
+            self._on_calculate,
+            self._scene,
+            self._photos,
+            width=BTN_W,
+            height=BTN_H,
+            radius=BTN_R,
+            font=BTN_FONT,
         )
-        btn.pack(pady=(20, 4))
 
     def _on_calculate(self) -> None:
         a = self.combo_a.get()
