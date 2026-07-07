@@ -8,6 +8,9 @@ from PIL import Image
 from glass import flatten_glass_tile, to_photo
 
 FONT = "Microsoft YaHei UI"
+POPUP_ROW_H = 40
+POPUP_VISIBLE_ROWS = 10
+POPUP_PAD = 8
 
 
 class GlassCombobox:
@@ -123,21 +126,26 @@ class GlassCombobox:
         self._open_popup()
 
     def _open_popup(self) -> None:
-        row_h = 40
-        popup_h = min(len(self._values), 10) * row_h + 16
+        row_h = POPUP_ROW_H
+        pad = POPUP_PAD
+        content_h = len(self._values) * row_h + pad * 2
+        visible_rows = min(POPUP_VISIBLE_ROWS, len(self._values))
+        viewport_h = visible_rows * row_h + pad * 2
+        scrollable = content_h > viewport_h
+
         popup = tk.Toplevel(self.canvas)
         popup.overrideredirect(True)
         popup.attributes("-topmost", True)
         popup.update_idletasks()
         popup_x = self.canvas.winfo_rootx() + self.x
         popup_y = self.canvas.winfo_rooty() + self.y + self._height + 6
-        popup.geometry(f"{self._width}x{popup_h}+{popup_x}+{popup_y}")
+        popup.geometry(f"{self._width}x{viewport_h}+{popup_x}+{popup_y}")
         self._popup = popup
 
         shell = tk.Canvas(
             popup,
             width=self._width,
-            height=popup_h,
+            height=viewport_h,
             highlightthickness=0,
             bd=0,
             bg="#010101",
@@ -153,7 +161,7 @@ class GlassCombobox:
             self.x,
             self.y + self._height,
             self._width,
-            popup_h,
+            content_h if scrollable else viewport_h,
             radius=self._radius,
             blur=16,
             frost=0.12,
@@ -161,11 +169,21 @@ class GlassCombobox:
             shadow=False,
         )
         panel_photo = to_photo(panel, shell)
-        shell.create_image(0, 0, image=panel_photo, anchor="nw")
+        shell.create_image(0, 0, image=panel_photo, anchor="nw", tags=("popup_bg",))
         shell._panel_photo = panel_photo
 
+        shell.configure(scrollregion=(0, 0, self._width, content_h))
+        if scrollable:
+            shell.configure(yscrollincrement=row_h)
+
+        def on_pick(_e=None, val: str = "") -> None:
+            self._var.set(val)
+            popup.destroy()
+            self._popup = None
+            self._draw(hover=False)
+
         for i, value in enumerate(self._values):
-            item_y = 14 + i * row_h + row_h // 2
+            item_y = pad + i * row_h + row_h // 2
             text_id = shell.create_text(
                 self._width // 2,
                 item_y,
@@ -173,15 +191,13 @@ class GlassCombobox:
                 font=self._font,
                 fill=self._text_color,
                 anchor="center",
+                tags=("popup_item",),
             )
 
-            def on_pick(_e=None, val: str = value) -> None:
-                self._var.set(val)
-                popup.destroy()
-                self._popup = None
-                self._draw(hover=False)
+            def bind_pick(_e=None, val: str = value) -> None:
+                on_pick(val=val)
 
-            shell.tag_bind(text_id, "<Button-1>", on_pick)
+            shell.tag_bind(text_id, "<Button-1>", bind_pick)
             shell.tag_bind(text_id, "<Enter>", lambda _e, tid=text_id: (
                 shell.itemconfig(tid, fill="#0B5394"),
                 shell.configure(cursor="hand2"),
@@ -190,8 +206,27 @@ class GlassCombobox:
                 tid, fill=self._text_color
             ))
 
+        def on_wheel(event: tk.Event) -> None:
+            if not scrollable:
+                return "break"
+            delta = -1 * (event.delta // 120) if event.delta else 0
+            if delta == 0:
+                delta = -1 if event.num == 4 else 1 if event.num == 5 else 0
+            shell.yview_scroll(delta, "units")
+            return "break"
+
+        if scrollable:
+            for widget in (popup, shell):
+                widget.bind("<MouseWheel>", on_wheel)
+                widget.bind("<Button-4>", on_wheel)
+                widget.bind("<Button-5>", on_wheel)
+            shell.tag_bind("popup_item", "<MouseWheel>", on_wheel)
+            shell.tag_bind("popup_item", "<Button-4>", on_wheel)
+            shell.tag_bind("popup_item", "<Button-5>", on_wheel)
+            shell.bind("<Enter>", lambda _e: shell.focus_set())
+
         popup.bind("<Escape>", lambda _e: (popup.destroy(), setattr(self, "_popup", None)))
-        popup.focus_set()
+        shell.focus_set()
 
 
 class GlassDisplay:
