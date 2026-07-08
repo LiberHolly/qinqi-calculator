@@ -18,6 +18,7 @@
 
 [快速开始](#快速开始) ·
 [功能特点](#功能特点) ·
+[打包](#打包) ·
 [下载使用](#下载使用) ·
 [项目结构](#项目结构) ·
 [开源协议](#开源协议)
@@ -66,21 +67,67 @@ python main.py
 
 ---
 
-## 下载使用
+## 打包
 
-不想配环境？在项目根目录执行打包脚本（需指定版本号）：
+将项目打包为 Windows 便携版 zip，用户解压后无需安装 Python 即可运行。
+
+### 环境要求
+
+- Windows 10 / 11
+- Python 3.10+（已加入 PATH）
+- 可访问 PyPI（脚本会自动安装 `requirements.txt` 与 `pyinstaller`）
+
+### 打包命令
+
+在项目根目录执行，**必须传入版本号**：
 
 ```powershell
 .\pack.ps1 1.0.0
 ```
 
-生成文件（位于 `release/`，已 gitignore）：
+版本号格式：`主版本.次版本.修订号`，可选后缀，例如 `1.0.0-beta`。
 
-| 产物 | 说明 |
+若提示脚本执行策略限制：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\pack.ps1 1.0.0
+```
+
+### 打包流程
+
+`pack.ps1` 会自动完成以下步骤：
+
+1. 检查 Python 与 `assets/` 资源目录
+2. 安装/更新依赖与 PyInstaller
+3. 在 `.build/` 中执行 PyInstaller 打包（中间文件，已 gitignore）
+4. 将 exe 及依赖文件压缩为 zip，输出到 `release/`
+
+### 输出产物
+
+| 路径 | 说明 |
 |------|------|
-| `release/亲戚称呼计算器-v1.0.0.zip` | 发给用户的压缩包 |
+| `release/亲戚称呼计算器-v1.0.0.zip` | 可分发压缩包（文件名随版本号变化） |
+| `.build/` | 构建缓存，可删除，不会提交到 git |
 
-解压 zip 后双击 **`亲戚称呼计算器.exe`** 即可使用（exe 与依赖文件在解压目录根级，无需再进子文件夹）。
+zip 内为**扁平结构**：解压后 `亲戚称呼计算器.exe` 与依赖文件在同一目录，双击 exe 即可运行。
+
+### 发布到 GitHub Releases（可选）
+
+```powershell
+.\pack.ps1 1.0.0
+gh release create v1.0.0 release/亲戚称呼计算器-v1.0.0.zip --title "v1.0.0"
+```
+
+---
+
+## 下载使用
+
+从 [GitHub Releases](https://github.com/LiberHolly/qinqi-calculator/releases) 下载对应版本的 zip，或自行打包（见上方 [打包](#打包) 章节）。
+
+1. 解压 `亲戚称呼计算器-vX.Y.Z.zip` 到任意目录
+2. 双击 **`亲戚称呼计算器.exe`** 启动
+
+无需安装 Python，无需运行 `start.bat`。
 
 ---
 
@@ -96,7 +143,9 @@ qinqi-calculator/
 │   ├── bg.png       # 壁纸
 │   └── screenshot.png
 ├── start.bat        # 开发启动
-├── pack.ps1         # 便携版打包（用法: .\pack.ps1 1.0.0）
+├── pack.ps1         # 便携版打包脚本
+├── .build/          # 打包中间文件（gitignore）
+├── release/         # 打包输出 zip（gitignore）
 └── LICENSE
 ```
 
