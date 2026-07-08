@@ -68,20 +68,19 @@ python main.py
 
 ## 下载使用
 
-不想配环境？在项目根目录执行打包脚本：
+不想配环境？在项目根目录执行打包脚本（需指定版本号）：
 
 ```powershell
-.\pack.ps1
+.\pack.ps1 1.0.0
 ```
 
 生成文件（位于 `release/`，已 gitignore）：
 
 | 产物 | 说明 |
 |------|------|
-| `release/亲戚称呼计算器-portable.zip` | 发给用户的压缩包 |
-| `release/portable/亲戚称呼计算器/` | 解压后的便携文件夹 |
+| `release/亲戚称呼计算器-v1.0.0.zip` | 发给用户的压缩包 |
 
-解压后双击 **`亲戚称呼计算器.exe`** 即可使用。
+解压 zip 后双击 **`亲戚称呼计算器.exe`** 即可使用（exe 与依赖文件在解压目录根级，无需再进子文件夹）。
 
 ---
 
@@ -97,7 +96,7 @@ qinqi-calculator/
 │   ├── bg.png       # 壁纸
 │   └── screenshot.png
 ├── start.bat        # 开发启动
-├── pack.ps1         # 便携版打包
+├── pack.ps1         # 便携版打包（用法: .\pack.ps1 1.0.0）
 └── LICENSE
 ```
 
