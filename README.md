@@ -49,8 +49,8 @@
 ### 方式一：双击运行（开发）
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Calc.git
-cd Calc
+git clone https://github.com/LiberHolly/qinqi-calculator.git
+cd qinqi-calculator
 ```
 
 双击 `start.bat`，脚本会自动检查依赖并启动。
@@ -88,7 +88,7 @@ python main.py
 ## 项目结构
 
 ```
-Calc/
+qinqi-calculator/
 ├── main.py          # 主窗口与布局
 ├── kinship.py       # 称谓选项与查表逻辑
 ├── widgets.py       # 下拉框、按钮等控件
