@@ -4,9 +4,9 @@
 
 **逢年过节必备 · 再也不会叫错亲戚**
 
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)]()
-[![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)]()
+[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#快速开始)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#快速开始)
+[![License](https://img.shields.io/github/license/LiberHolly/qinqi-calculator?style=for-the-badge)](LICENSE)
 
 <br>
 
@@ -16,11 +16,11 @@
 
 <br><br>
 
-[快速开始](#-快速开始) ·
-[功能特点](#-功能特点) ·
-[下载使用](#-下载使用) ·
-[项目结构](#-项目结构) ·
-[开源协议](#-开源协议)
+[快速开始](#快速开始) ·
+[功能特点](#功能特点) ·
+[下载使用](#下载使用) ·
+[项目结构](#项目结构) ·
+[开源协议](#开源协议)
 
 </div>
 
