@@ -1,5 +1,3 @@
-"""Liquid-glass controls drawn directly on a host canvas (no embedded windows)."""
-
 from __future__ import annotations
 
 import tkinter as tk
@@ -14,8 +12,6 @@ POPUP_PAD = 8
 
 
 class GlassCombobox:
-    """Dropdown control rendered as canvas items."""
-
     def __init__(
         self,
         canvas: tk.Canvas,
@@ -156,7 +152,6 @@ class GlassCombobox:
         except tk.TclError:
             pass
 
-        # Fixed viewport-sized panel keeps rounded corners while only items scroll.
         panel = flatten_glass_tile(
             self._background,
             self.x,
@@ -237,8 +232,6 @@ class GlassCombobox:
 
 
 class GlassDisplay:
-    """Read-only result field drawn on canvas."""
-
     def __init__(
         self,
         canvas: tk.Canvas,
@@ -288,8 +281,6 @@ class GlassDisplay:
 
 
 class GlassButton:
-    """Rounded liquid-glass button drawn on canvas."""
-
     def __init__(
         self,
         canvas: tk.Canvas,

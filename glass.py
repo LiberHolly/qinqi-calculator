@@ -1,5 +1,3 @@
-"""Windows acrylic blur and liquid-glass image helpers."""
-
 from __future__ import annotations
 
 import ctypes
@@ -7,7 +5,6 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageTk
 
-# Windows DWM accent / corner constants
 ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
 WCA_ACCENT_POLICY = 19
 DWMWA_WINDOW_CORNER_PREFERENCE = 33
@@ -78,7 +75,6 @@ def load_background(path: Path, width: int, height: int) -> Image.Image:
 
 
 def sample_bg_hex(background: Image.Image, x: int, y: int) -> str:
-    """Pick a canvas background color that blends with wallpaper behind a widget."""
     px = max(0, min(background.width - 1, x))
     py = max(0, min(background.height - 1, y))
     r, g, b, *_ = background.getpixel((px, py))
@@ -125,7 +121,6 @@ def make_liquid_glass(
     highlight_strength: float = 1.0,
     shadow: bool = True,
 ) -> Image.Image:
-    """Render iOS-style liquid glass: refractive blur, rim light, 3D bevel."""
     pad = 6 if shadow else 0
     out_w, out_h = width + pad * 2, height + pad * 2
     result = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
@@ -146,7 +141,6 @@ def make_liquid_glass(
     y2 = max(y1 + 1, min(y + height, bg.height))
     region = bg.crop((x1, y1, x2, y2)).resize((width, height), Image.Resampling.LANCZOS)
 
-    # Backdrop blur + slight saturation lift for a lens-like feel
     frosted = region.filter(ImageFilter.GaussianBlur(blur))
     glass = Image.alpha_composite(
         frosted,
@@ -155,7 +149,6 @@ def make_liquid_glass(
     if tint:
         glass = Image.alpha_composite(glass, Image.new("RGBA", (width, height), tint))
 
-    # 3D tubular volume — bright crest, darker trough
     volume = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     vdraw = ImageDraw.Draw(volume)
     vdraw.rounded_rectangle(
@@ -170,7 +163,6 @@ def make_liquid_glass(
     )
     glass = Image.alpha_composite(glass, volume)
 
-    # Specular streak along top-left edge
     spec = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     sdraw = ImageDraw.Draw(spec)
     sdraw.rounded_rectangle(
@@ -181,7 +173,6 @@ def make_liquid_glass(
     sdraw.line([(8, 8), (width // 2, 8)], fill=(255, 255, 255, int(180 * highlight_strength)), width=2)
     glass = Image.alpha_composite(glass, spec)
 
-    # Rim lighting — bright outer edge + soft inner glow
     rim = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     rdraw = ImageDraw.Draw(rim)
     rdraw.rounded_rectangle(
@@ -211,7 +202,6 @@ def flatten_glass_tile(
     height: int,
     **kwargs,
 ) -> Image.Image:
-    """Composite liquid glass onto the scene so corners show true background pixels."""
     layer = make_liquid_glass(scene, x, y, width, height, **kwargs)
     pad = 6 if kwargs.get("shadow", True) else 0
     sx, sy = max(0, x - pad), max(0, y - pad)
@@ -234,7 +224,6 @@ def make_glass_panel(
     highlight_strength: float = 1.05,
     border: tuple[int, int, int, int] = (255, 255, 255, 170),
 ) -> Image.Image:
-    """Large liquid-glass card panel."""
     _ = border
     return flatten_glass_tile(
         background,
@@ -261,7 +250,6 @@ def make_liquid_glass_button(
     tint: tuple[int, int, int, int] = (0, 122, 255, 95),
     highlight_strength: float = 1.1,
 ) -> Image.Image:
-    """Liquid-glass button with a subtle blue tint."""
     btn = make_liquid_glass(
         background,
         x,

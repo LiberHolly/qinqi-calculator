@@ -1,7 +1,6 @@
-"""亲戚称呼模拟器 — Liquid Glass desktop app."""
-
 from __future__ import annotations
 
+import sys
 import threading
 import tkinter as tk
 from dataclasses import dataclass
@@ -19,10 +18,17 @@ from kinship import RELATIVES, calculate
 from widgets import GlassButton, GlassCombobox, GlassDisplay
 
 FONT = "Microsoft YaHei UI"
-ASSETS = Path(__file__).parent / "assets"
+
+
+def app_root() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).parent
+
+
+ASSETS = app_root() / "assets"
 BG_PATH = ASSETS / "bg.png"
 
-# Text — dark on light glass for readability
 TEXT_PRIMARY = "#1A2B3D"
 TEXT_SECONDARY = "#3A5068"
 TEXT_LABEL = "#344A60"
@@ -30,7 +36,6 @@ TEXT_INPUT = "#1A3348"
 TEXT_ARROW = "#5A7490"
 TEXT_RESULT = "#0B5394"
 
-# Layout spacing — equal margin around the card on all sides
 WIN_MARGIN = 36
 CARD_PAD_X = 48
 CARD_PAD_TOP = 44
@@ -38,7 +43,6 @@ CARD_PAD_BOTTOM = 36
 GAP_LABEL = 42
 BTN_GAP = 28
 
-# Vertical offsets inside the card
 INPUT_W, INPUT_H, INPUT_R = 196, 64, 22
 RESULT_W = 220
 BTN_W, BTN_H, BTN_R = 240, 64, 26
@@ -73,7 +77,6 @@ class Layout:
 
 
 def compute_layout() -> Layout:
-    """Derive window and widget geometry from content sizes."""
     row_width = INPUT_W + GAP_LABEL + INPUT_W + GAP_LABEL + RESULT_W
     content_width = max(row_width, BTN_W)
     card_w = content_width + CARD_PAD_X * 2
@@ -110,7 +113,6 @@ def compute_layout() -> Layout:
 
 
 def speak(text: str) -> None:
-    """Speak text using Windows SAPI with a female Chinese voice."""
     try:
         import win32com.client  # type: ignore[import-untyped]
 
@@ -143,7 +145,7 @@ def speak(text: str) -> None:
 class KinshipApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("亲戚称呼模拟器")
+        self.title("亲戚称呼计算器")
         self.resizable(False, False)
         self.configure(bg="#000000")
 
@@ -208,7 +210,7 @@ class KinshipApp(tk.Tk):
             self.canvas,
             lay.win_w // 2,
             lay.title_y,
-            "亲戚称呼模拟器",
+            "亲戚称呼计算器",
             font=(FONT, 30, "bold"),
             fill=TEXT_PRIMARY,
         )
@@ -307,7 +309,8 @@ class KinshipApp(tk.Tk):
             return
         result = calculate(a, b)
         self.result_var.set(result)
-        threading.Thread(target=speak, args=(result,), daemon=True).start()
+        sentence = f"{a}的{b}叫{result}"
+        threading.Thread(target=speak, args=(sentence,), daemon=True).start()
 
 
 def main() -> None:
